@@ -1,0 +1,21 @@
+# general
+batch_size: 256
+input_size: 112
+embd_shape: 512
+sub_name: 'arc_patch_convnext'
+backbone_type: 'Patch-ConvNeXt' # 'ResNet50', 'MobileNetV2'
+head_type: ArcHead # 'ArcHead', 'NormHead'
+is_ccrop: False # central-cropping or not
+
+# train
+train_dataset: './data/vggface2_train.tfrecord'
+binary_img: False
+num_classes: 8631
+num_samples: 3087586
+epochs: 12
+base_lr: 0.1
+w_decay: !!float 5e-4
+save_steps: 5000
+
+# test
+test_dataset: './data/vggface2_test.tfrecord'

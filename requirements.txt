@@ -1,0 +1,7 @@
+tensorflow==2.12
+mtcnn
+opencv-python
+numpy
+tqdm
+matplotlib
+tensorflow-addons==0.20.0
