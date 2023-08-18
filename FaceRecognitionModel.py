@@ -131,10 +131,7 @@ class FaceRecognitionModel:
 
         emb_1 = self.get_video_feature_embedding(video_1)
         emb_2 = self.get_video_feature_embedding(video_2)
-        diff = np.subtract(emb_1, emb_2)
-        dist = np.sum(np.square(diff), 1)
-
-        return dist < threshold
+        return self.compare_embeddings(emb_1, emb_2, threshold)
 
     def video_files_have_same_person(self, video_1, video_2, threshold=1.5):
         '''
@@ -143,10 +140,7 @@ class FaceRecognitionModel:
 
         emb_1 = self.get_video_feature_embedding_filepath(video_1)
         emb_2 = self.get_video_feature_embedding_filepath(video_2)
-        diff = np.subtract(emb_1, emb_2)
-        dist = np.sum(np.square(diff), 1)
-
-        return dist < threshold
+        return self.compare_embeddings(emb_1, emb_2, threshold)
     
     def get_image_feature_embedding(self, img):
         '''
@@ -168,6 +162,9 @@ class FaceRecognitionModel:
 
         emb_1 = self.get_image_feature_embedding(img_1)
         emb_2 = self.get_image_feature_embedding(img_2)
+        return self.compare_embeddings(emb_1, emb_2, threshold)
+
+    def compare_embeddings(self, emb_1, emb_2, threshold=1.5):
         diff = np.subtract(emb_1, emb_2)
         dist = np.sum(np.square(diff), 1)
 
