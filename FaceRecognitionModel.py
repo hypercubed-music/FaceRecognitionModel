@@ -43,7 +43,49 @@ class FaceRecognitionModel:
         self.model = tf.keras.models.Sequential(base_model.layers[:-2])
         self.detector = MTCNN()
 
-    def get_video_feature_embedding(self, video_path, rate=0.25):
+    def get_video_feature_embedding(self, video, rate=5):
+        '''
+        Gets the average feature embedding for a video
+
+        video: Video data, as a byte array
+        rate: Rate to sample frames, in seconds (default 0.25 seconds)
+        '''
+
+        # yes, I know this is stupid, but cv2 won't work with byte array variables
+        with open("temp.mp4", "w") as video_file:
+            video_file.write(video)
+
+        video = cv2.VideoCapture("temp.mp4")
+        video_frames = []
+        video_embs = []
+        
+        # extract frames
+        print("Extracting frames...")
+        success,image = video.read()
+        count = 0
+        while success:
+            video.set(cv2.CAP_PROP_POS_FRAMES,(count*rate))    # added this line 
+            success,image = video.read()
+            video_frames.append(image)
+            count += 1
+
+        # get embeddings for frames
+        print("Generating embedding...")
+        for frame in tqdm(video_frames[:-1]):
+            try:
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                emb = self.get_image_feature_embedding(frame)
+                video_embs.append(emb)
+            except Exception as e:
+                print(str(e))
+                continue
+        
+        os.remove("temp.mp4")
+
+        return np.mean(video_embs, axis=0)
+
+
+    def get_video_feature_embedding_filepath(self, video_path, rate=5, cache_embs=True):
         '''
         Gets the average feature embedding for a video
 
@@ -60,11 +102,12 @@ class FaceRecognitionModel:
         success,image = video.read()
         count = 0
         while success:
-            video.set(cv2.CAP_PROP_POS_MSEC,(count*rate*1000))    # added this line 
+            video.set(cv2.CAP_PROP_POS_FRAMES,(count*rate))    # added this line 
             success,image = video.read()
             video_frames.append(image)
             count += 1
 
+        print(f"Extracted {count} frames")
         # get embeddings for frames
         print("Generating embedding...")
         for frame in tqdm(video_frames[:-1]):
@@ -75,6 +118,9 @@ class FaceRecognitionModel:
             except Exception as e:
                 print(str(e))
                 continue
+
+        if cache_embs:
+            self.cache[video_path] = np.mean(video_embs, axis=0)
         
         return np.mean(video_embs, axis=0)
 
@@ -89,11 +135,24 @@ class FaceRecognitionModel:
         dist = np.sum(np.square(diff), 1)
 
         return dist < threshold
+
+    def video_files_have_same_person(self, video_1, video_2, threshold=1.5):
+        '''
+        Compares two videos and returns if the model sees that they have the same people
+        '''
+
+        emb_1 = self.get_video_feature_embedding_filepath(video_1)
+        emb_2 = self.get_video_feature_embedding_filepath(video_2)
+        diff = np.subtract(emb_1, emb_2)
+        dist = np.sum(np.square(diff), 1)
+
+        return dist < threshold
     
     def get_image_feature_embedding(self, img):
         '''
         Gets the embedding of an image
         '''
+        tf.keras.utils.disable_interactive_logging()
 
         detected_face = self.detector.detect_faces(img)[0]
         bbox = detected_face['box']
@@ -115,6 +174,6 @@ class FaceRecognitionModel:
         return dist < threshold
 
 if __name__ == "__main__":
-    model = FaceRecognitionModel("./checkpoints/arc_patch_convnext","./configs/arc_patch_convnext.yaml")
+    model = FaceRecognitionModel("./checkpoints/arc_patch_convnext_actual","./configs/arc_patch_convnext.yaml")
 
     print(model.videos_have_same_person("my_video.mp4", "my_other_video.mp4"))
